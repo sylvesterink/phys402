@@ -10,7 +10,8 @@ void sleep(uint8_t millisec)
                 millisec--;
         }
 }
-main()
+
+int main(int argc, char const *argv[])
 {
 
         DDRC |=1<<PC2;  /* PC2 will now be the output pin */

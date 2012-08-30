@@ -2,13 +2,13 @@
  * project: Lab 1, parts 1 & 2
  * @file main.c
  * @brief
- * @author Cameron Bently, Brandon Kasa
+ * @author Cameron Bentley, Brandon Kasa
  * @date 2012-08-30
  * build:
  */
 #include <avr/io.h>
 
-#define CYCLES_PER_MS 100
+#define CYCLES_PER_MS 10000000
 
 void wait_ms(unsigned int time);
 
@@ -20,13 +20,12 @@ void wait_ms(unsigned int time);
  */
 int main(int argc, char const *argv[])
 {
-    /*DDRE = <port direction?>;*/
-    /*PORTE = <port output?>;*/
+    DDRE = 0xF0;
+    PORTE = 0x00;
 
     while (1) {
-        wait_ms(250);
-        // 	count on port E somehow?
-
+        PORTE += 0x10;
+        wait_ms(1000);
     }
 
     return 0;
@@ -38,7 +37,7 @@ int main(int argc, char const *argv[])
  */
 void wait_ms(unsigned int time)
 {
-    unsigned int cycles = time * CYCLES_PER_MS;
+    volatile unsigned int cycles = time * CYCLES_PER_MS;
 
     while (cycles > 0) {
         cycles--;
