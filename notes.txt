@@ -1,0 +1,7 @@
+Delay constant: 100000 cycles per "ms"
+Delay value: 1000 "ms" per led change
+Time for one loop, 0-15: 2 seconds
+
+Unfortunately, we can't achieve a proper timing delay, as the compiler
+seems to optimize our loop.  (This is one reason a loop like this is
+not a dependable method for delay.)

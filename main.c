@@ -8,7 +8,7 @@
  */
 #include <avr/io.h>
 
-#define CYCLES_PER_MS 10000000
+#define CYCLES_PER_MS 100000
 
 void wait_ms(unsigned int time);
 
