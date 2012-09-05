@@ -1,7 +1,30 @@
+Lab Notes
+Cameron Bentley, Brandon Kasa
+
+Part 2:
+*******
 Delay constant: 100000 cycles per "ms"
 Delay value: 1000 "ms" per led change
-Time for one loop, 0-15: 2 seconds
+Time for one loop, 0-15: 2 seconds (the slowest we could get)
 
 Unfortunately, we can't achieve a proper timing delay, as the compiler
 seems to optimize our loop.  (This is one reason a loop like this is
 not a dependable method for delay.)
+
+Part 3:
+*******
+On oscilloscope
+With 5ms delay: 4.52ms
+With 50us delay: 56us
+(On pin 3 on JC)
+No func: 496ns, or .5us
+With func: 1.62us
+
+We determined that with a function call, the flip took about 3 times as 
+long to perform, with a majority of the time being during the off state
+(which was when the function was called and returned).
+We also found that by having the flip commands copy-pasted repeatedly in
+the loop, the loop ran slightly faster, as there were less times the loop
+instructions had to be called to jump back to the start of the loop,
+(about 12 instructions for 3 loops of 1 flip vs 8 instructions for one
+loop of 3 flips)

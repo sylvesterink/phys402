@@ -8,9 +8,9 @@ INCLOCS =  #-I/usr/avr/include#-I$(WSU_INC)
 PROGRAMMER = avrispmkII
 DEVICE = m64 
 PORT = usb
-SOURCE  = main.c
+SOURCE  = part3.c
 OBJECTS = $(SOURCE:.c=.o)
-EXECUTABLE = ledblink
+EXECUTABLE = flip
 
 all: $(EXECUTABLE)
 
@@ -25,4 +25,4 @@ load:
 	$(LOADER) -c $(PROGRAMMER) -p $(DEVICE) -P $(PORT) -U flash:w:$(EXECUTABLE).hex
 
 clean:
-	rm -rf *.o $(EXECUTABLE)
+	rm -rf *.o $(EXECUTABLE) $(EXECUTABLE).hex
