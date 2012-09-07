@@ -1,0 +1,30 @@
+Part 1:
+
+Timer granularity was about 16us, which is slower than the .5us from
+lab01, when we flipped at the fastest possible rate.
+
+Part 2:
+1000: 258us
+900: 233us
+800: 208us
+700: 183us
+600: 158us
+500: 133us
+400: 108us 
+300: 84us
+200: 58us
+100: 33us
+90: 30.5us
+80: 28us
+70: 25.5us
+60: 23us
+50: 20.5us
+40: 18us
+30: 15.5us
+20: 13us
+10: 11.5us
+9: 11.5us
+8: 11.5us
+5: 11.5us
+2: 11.5us
+0: 11.5us
