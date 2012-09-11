@@ -21,7 +21,13 @@ volatile short int timeout = FALSE;
 /*volatile int */
 ISR(TIMER1_OVF_vect)
 {
-    timeout = TRUE;
+    if (PINB == 0x01)
+    {
+        timeout = TRUE;
+    }
+    /*else {*/
+        /*timeout = FALSE;*/
+    /*}*/
     cli();
 
     /*This will allow us to set our own interval*/
@@ -49,6 +55,9 @@ int main(int argc, char const *argv[])
     DDRD = 0x0F;
     /*Set all the pins off initially*/
     PORTD = 0x00;
+
+    /*Set the low bits of port B (pin bits) as input bits*/
+    DDRB = 0x00;
 
     /*Disable other timer modes*/
     TCCR1A = 0x00;
