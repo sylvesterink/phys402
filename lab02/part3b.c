@@ -19,7 +19,7 @@
 volatile short int timeout = FALSE;
 
 /*volatile int */
-ISR(TIMER1_OVF_vect)
+ISR(INT4_vect)
 {
     if (PINC & 0x01)
     {
@@ -55,19 +55,12 @@ int main(int argc, char const *argv[])
     /*Set the low bits of port B (pin bits) as input bits*/
     DDRC = 0x00;
 
-    /*Disable other timer modes*/
-    TCCR1A = 0x00;
-    TCCR1C = 0x00;
+    /*Set to detect INT4 on rising edge (so we know when button pressed)*/
+    EICRB = 0x02;
 
-    /*Clock divider*/
-    /*Divide clock*/
-    TCCR1B = 0x03;
-
-    /*Enable timer overflow interrupt*/
-    TIMSK = 0x04;
-
-    /*Clear timer overflow flag register*/
-    TIFR = 0x00;
+    /*!!! don't know what we're doing here*/
+    EIMSK = 0x08;
+    EIFR = 0x10;
 
     sei();
 
