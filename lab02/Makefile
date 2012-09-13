@@ -8,7 +8,7 @@ INCLOCS =  #-I/usr/avr/include#-I$(WSU_INC)
 PROGRAMMER = avrispmkII
 DEVICE = m64 
 PORT = usb
-SOURCE  = main.c
+SOURCE  = part1.c
 OBJECTS = $(SOURCE:.c=.o)
 EXECUTABLE = ledblink
 

@@ -1,9 +1,13 @@
 /**
  * project: Lab 2, part 3
- * @file part2.c
- * @brief 
+ * @file part3.c
+ * @brief Implement a binary counter that increments 2 sets of leds.
+ *        The board LEDs increment at the specified rate while the
+ *        external LEDs increment at 1/3rd the rate
+ *        This counter increments when Button 0 on the external
+ *        input is pressed, detected by the timer polling the pin.
  * @author Cameron Bentley, Brandon Kasa
- * @date 2012-09-
+ * @date 2012-09-13
  * build: 1.0
  */
 #include <avr/io.h>
@@ -13,17 +17,24 @@
 #define MILLISECONDS 250
 #define CLOCK_OFFSET (1000 - MILLISECONDS) * 65.535
 
+/*Define our own boolean values for readability*/
 #define FALSE 0
 #define TRUE 1
 
-volatile short int timeout = FALSE;
+/*Global value to indicate button press*/
+volatile short int isPressedBut0 = FALSE;
 
-/*volatile int */
+/**
+ * @brief When the timeout occurs, check if button 0 is pushed and set the
+ *        signal if so.
+ * @param TIMER1_OVF_vect
+ */
 ISR(TIMER1_OVF_vect)
 {
+    /*check if any button combination including button 0 is pushed*/
     if (PINC & 0x01)
     {
-        timeout = TRUE;
+        isPressedBut0 = TRUE;
     }
 
     /*This will allow us to set our own interval*/
@@ -32,14 +43,14 @@ ISR(TIMER1_OVF_vect)
 
 /**
  * @brief Main program loop.  Repeatedly counts from 0-15 using the onboard
- *        LEDs as indicators.
+ *        and offboard LEDs as indicators.  Offboard counts at 1/3rd the rate.
  * @param argc Argument count
  * @param argv[] Argument list
  * @return Error code
  */
 int main(int argc, char const *argv[])
 {
-    timeout = FALSE;
+    isPressedBut0 = FALSE;
     short int divider = 0;
     
     /*Set the high bits of port E (LED bits) as output bits*/
@@ -73,9 +84,12 @@ int main(int argc, char const *argv[])
 
     /* Run continuously */
     while (1) {
-        if (timeout == TRUE)
+        /*If the button is pressed, increment counters*/
+        if (isPressedBut0 == TRUE)
         {
             PORTE += 0x10;
+
+            /*Only increment the offboard counter every 3rd count*/
             if (divider > 2)
             {
                 PORTD += 0x01;
@@ -83,7 +97,8 @@ int main(int argc, char const *argv[])
             }
 
             divider++;
-            timeout = FALSE;
+            /*we have handled the button press, so reset it*/
+            isPressedBut0 = FALSE;
         }
     }
 
