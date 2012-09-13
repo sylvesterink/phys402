@@ -17,14 +17,14 @@
 
 /**
  * @brief Timer interrupt for when the timeout occurs
- * @param TIMER1_OVF_vect Type of interupt
+ * @param TIMER1_OVF_vect Type of interrupt
  */
 ISR(TIMER1_OVF_vect)
 {
     /*Increment the binary counter*/
     PORTE += 0x01;
 
-    cli();
+    //cli();//turns off interrupts
 
     /*Start timer at a later point*/
     /*To get exact timer granularity, uncomment below*/
