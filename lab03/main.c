@@ -40,15 +40,24 @@ ISR(TCC0_OVF_vect)
 {
     
     timeout = TRUE;
-
     /*This will allow us to set our own interval*/
     TCC0_CNT = CLOCK_OFFSET;
 }
 
+/**
+ * @brief !!
+ * @param USARTC1_TXC_vect
+ */
+ISR(USARTC1_TXC_vect)
+{
+
+
+}
 void main(void)
 {
 	
 	unsigned long sClk, pClk;
+	uint16_t nBSel;
 	
 	cli();
 /************ SET UP SERIAL CLOCK *************/	
@@ -70,7 +79,7 @@ void main(void)
 
 /************ SET UP SERIAL PORT *************/	
 	int nBScale = BSCALE_FACTOR;
-	unsigned long nBSel = ( (1 / pow(2,nBScale)) * (pClk / (16 * FBAUD)) -1);
+	nBSel = (uint16_t)( (1.0 / pow(2.0,(double)nBScale)) * (double)((double)pClk / (16.0 * (double)FBAUD)) - 1.0);
 	
 	/*Set up serial port on port C */
 	USARTC0_CTRLC = SERIAL_BITS | 
@@ -81,21 +90,31 @@ void main(void)
 	USARTC0_BAUDCTRLB = (char)( ((nBScale & 0x000F) << 4) |
 						((nBSel & 0x0F00) >> 8) );
 	/*set Tx interrupt to low priority*/						
-	USARTC0_CTRLA = 0x04;
+	USARTC0_CTRLA = 0x0B;
 	
 	sei();
 	
 	/*Enable Tx*/
 	USARTC0_CTRLB = 0x08;
 	
+	
 	/*Set port direction to output*/
-	PORTC_DIR = 0xFF;	
+	PORTC.DIRSET = 0xFF;
+	//PORTC_DIR = 0xFF;
+	//PORTC.DIR |= (1<<3) | (1<<0);
+	//PORTC.OUT |= (1<<3);	
 /************ PROGRAM LOOP *************/	
 	while(1)
 	{
-		if(timeout == TRUE)
+		if(/*timeout == */TRUE)
 		{
-			!!! need to output to port C. 2 send via serial. 3 profit
+			USARTC0_DATA = 'b';
+			if(!(USARTC0.STATUS & USART_DREIF_bm))
+			{
+				while (!(USARTC0.STATUS & USART_TXCIF_bm));
+			}
+			USARTC1.STATUS |= USART_TXCIF_bm;
+			
 			timeout = FALSE;
 		}
 	}
