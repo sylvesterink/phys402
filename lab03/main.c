@@ -1,5 +1,5 @@
 /**
- * project: Lab 2, part 1
+ * project: Lab 3, part 1
  * @file part1.c
  * @brief 
  *        
@@ -12,6 +12,8 @@
 #include <avr/io.h>
 #include <AVRXlib/AVRX_Clocks.h>
 #include <math.h>
+#include <stdio.h>
+//#include <string.h>
 
 #define SERIAL_BITS 0x03
 #define SERIAL_STOP_BIT 0x00
@@ -20,10 +22,9 @@
 #define BSCALE_FACTOR -4
 #define FBAUD 57600
 
-/*With clock divider at 0x03, a full timer interval is 1 second*/
-#define MILLISECONDS 250
-#define CLOCK_OFFSET (1000 - MILLISECONDS) * 65.535
-#define CLK_DIVIDE 0x03
+/*With clock divider at 0x07, 10,000 delay is 1 second*/
+#define DELAY 10000
+#define CLK_DIVIDE 0x07
 
 /*Define our own boolean values for readability*/
 #define FALSE 0
@@ -31,6 +32,8 @@
 
 /*Global value to indicate counter timeout*/
 volatile short int timeout = FALSE;
+
+volatile char *snd;
 
 /**
  * @brief !!
@@ -41,18 +44,30 @@ ISR(TCC0_OVF_vect)
     
     timeout = TRUE;
     /*This will allow us to set our own interval*/
-    TCC0_CNT = CLOCK_OFFSET;
+//    TCC0_CNT = CLOCK_OFFSET;
 }
 
 /**
  * @brief !!
  * @param USARTC1_TXC_vect
  */
-ISR(USARTC1_TXC_vect)
+ISR(USARTE1_TXC_vect)
 {
-
-
+	if (*(++snd) != 0)
+//		UsartWriteChar(*dataString++);
+		USARTE1_DATA = *snd;
 }
+
+
+void UsartWriteLine(char* dataString)
+{
+//	UsartWriteString(dataString);
+
+	snd = dataString;
+	USARTE1_DATA = *snd;
+//	UsartWriteString("\n\r");
+}			
+ 
 void main(void)
 {
 	
@@ -76,46 +91,43 @@ void main(void)
 	TCC0_INTCTRLA = 0x02; /*Sets the interrupt to overflow, medium priority*/
 	TCC0_INTCTRLB = 0x00; /*Sets the timer mode to compare*/
 	TCC0_INTFLAGS = 0x00; /*Overflow flag in bit 0*/
+	TCC0_PER = DELAY;
 
 /************ SET UP SERIAL PORT *************/	
 	int nBScale = BSCALE_FACTOR;
 	nBSel = (uint16_t)( (1.0 / pow(2.0,(double)nBScale)) * (double)((double)pClk / (16.0 * (double)FBAUD)) - 1.0);
 	
 	/*Set up serial port on port C */
-	USARTC0_CTRLC = SERIAL_BITS | 
+	USARTE1_CTRLC = SERIAL_BITS | 
 					SERIAL_STOP_BIT |
 					SERIAL_PARITY;
 					
-	USARTC0_BAUDCTRLA = (unsigned char)(nBSel & 0x00FF);
-	USARTC0_BAUDCTRLB = (char)( ((nBScale & 0x000F) << 4) |
+	USARTE1_BAUDCTRLA = (unsigned char)(nBSel & 0x00FF);
+	USARTE1_BAUDCTRLB = (char)( ((nBScale & 0x000F) << 4) |
 						((nBSel & 0x0F00) >> 8) );
 	/*set Tx interrupt to low priority*/						
-	USARTC0_CTRLA = 0x0B;
+	USARTE1_CTRLA = 0x08;
 	
 	sei();
 	
 	/*Enable Tx*/
-	USARTC0_CTRLB = 0x08;
+	USARTE1_CTRLB = 0x08;
 	
 	
 	/*Set port direction to output*/
-	PORTC.DIRSET = 0xFF;
-	//PORTC_DIR = 0xFF;
-	//PORTC.DIR |= (1<<3) | (1<<0);
-	//PORTC.OUT |= (1<<3);	
+	PORTE.DIRSET = 0xFF;
+
 /************ PROGRAM LOOP *************/	
+	char* numbers[5] = {"one\n\r", "two\n\r", "three\n\r", "four\n\r", "five\n\r"};
+	int numberCount = 0;
 	while(1)
 	{
-		if(/*timeout == */TRUE)
+		if(timeout == TRUE)
 		{
-			USARTC0_DATA = 'b';
-			if(!(USARTC0.STATUS & USART_DREIF_bm))
-			{
-				while (!(USARTC0.STATUS & USART_TXCIF_bm));
-			}
-			USARTC1.STATUS |= USART_TXCIF_bm;
-			
 			timeout = FALSE;
+			UsartWriteLine(numbers[numberCount]);
+			numberCount = (++numberCount)%5;
+			
 		}
 	}
 	
