@@ -1,0 +1,12 @@
+Part 1:
+PER: 2000
+CCA: 160
+Pulse Width: 636us
+Period: 7950us
+Duty Cycle: 8.00%
+
+PER: 2000
+CCA: 159
+Pulse Width: 632us
+Period: 7950us
+Duty Cycle: 7.95%
