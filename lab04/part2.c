@@ -12,6 +12,14 @@
 /*#include <AVRXlib/AVRX_Clocks.h>*/
 
 
+ISR(TCC0_OVF_vect)
+{
+	!!! Don't forget about update rate changing
+	!!! port j will be used for the pushbuttons
+	TCC0_CCA--;
+	if()
+}
+
 /**
  * @brief 
  * @param argc Argument count
@@ -28,7 +36,7 @@ int main(int argc, char const *argv[])
 	TCC0_CTRLC = 0x00; /*Turn waveform generation output compare off*/
 	TCC0_CTRLD = 0x00;  /*Turn off event action*/
 	TCC0_CTRLE = 0x00; /*Sets timer to 16bit mode*/
-	TCC0_INTCTRLA = 0x00; /*Sets the interrupt to overflow off*/
+	TCC0_INTCTRLA = 0x02; /*Sets the interrupt to overflow off*/
 	TCC0_INTCTRLB = 0x00; /*Sets the Compare or Capture interrupt off*/
 	TCC0_PER = 2000;
 	TCC0_CCA = 160;
