@@ -1,10 +1,10 @@
 /**
- * project: Lab 3, part 1
- * @file part1.c
- * @brief 
- *        
+ * project: Lab 3, part 2
+ * @file part2.c
+ * @brief Outputs a rotating text count from 1 to 5 on the USART E1 serial port
+ *        at a rate of about 1 count per second.
  * @author Cameron Bentley, Brandon Kasa
- * @date 2012-09-13
+ * @date 2012-09-27
  * build: 1.0
  */
 
@@ -12,9 +12,8 @@
 #include <avr/io.h>
 #include <AVRXlib/AVRX_Clocks.h>
 #include <math.h>
-#include <stdio.h>
-//#include <string.h>
 
+/* Define serial port settings*/
 #define SERIAL_BITS 0x03
 #define SERIAL_STOP_BIT 0x00
 #define SERIAL_PARITY 0x00
@@ -33,44 +32,49 @@
 /*Global value to indicate counter timeout*/
 volatile short int timeout = FALSE;
 
+/*Buffer for sending a character to the serial port*/
 volatile char *snd;
 
 /**
- * @brief !!
- * @param TIMER1_OVF_vect
+ * @brief Interrupt handler for the timer timeout.  Sets a timeout flag to be
+ *        used by the main loop.
  */
 ISR(TCC0_OVF_vect)
 {
-    
     timeout = TRUE;
-    /*This will allow us to set our own interval*/
-//    TCC0_CNT = CLOCK_OFFSET;
 }
 
 /**
- * @brief !!
+ * @brief Interrupt handler for when a character is sent on the serial port.
+ *        Sends the next character in a sequence (if there is one)
  * @param USARTC1_TXC_vect
  */
 ISR(USARTE1_TXC_vect)
 {
 	if (*(++snd) != 0)
-//		UsartWriteChar(*dataString++);
 		USARTE1_DATA = *snd;
 }
 
-
+/**
+ * @brief Outputs a string of text to the serial port E1
+ * @param dataString The data to output
+ */
 void UsartWriteLine(char* dataString)
 {
-//	UsartWriteString(dataString);
-
+    /*Set the global buffer to point to the first character*/
 	snd = dataString;
 	USARTE1_DATA = *snd;
-//	UsartWriteString("\n\r");
 }			
  
-void main(void)
+/**
+ * @brief Sets up timer and serial port, then starts sending a count from 1-5
+ *        on the serial port at a one second interval.
+ * @param argc Argument count
+ * @param argv[] Argument list
+ * @return Error code
+ */
+int main(int argc, char const *argv[])
 {
-	
 	unsigned long sClk, pClk;
 	uint16_t nBSel;
 	
@@ -95,9 +99,10 @@ void main(void)
 
 /************ SET UP SERIAL PORT *************/	
 	int nBScale = BSCALE_FACTOR;
+    /* Calculate baud rate */
 	nBSel = (uint16_t)( (1.0 / pow(2.0,(double)nBScale)) * (double)((double)pClk / (16.0 * (double)FBAUD)) - 1.0);
 	
-	/*Set up serial port on port C */
+	/*Set up serial port on port E1 */
 	USARTE1_CTRLC = SERIAL_BITS | 
 					SERIAL_STOP_BIT |
 					SERIAL_PARITY;
@@ -105,12 +110,13 @@ void main(void)
 	USARTE1_BAUDCTRLA = (unsigned char)(nBSel & 0x00FF);
 	USARTE1_BAUDCTRLB = (char)( ((nBScale & 0x000F) << 4) |
 						((nBSel & 0x0F00) >> 8) );
-	/*set Tx interrupt to low priority*/						
+
+	/*set Tx interrupt to medium priority*/						
 	USARTE1_CTRLA = 0x08;
 	
 	sei();
 	
-	/*Enable Tx*/
+	/*Enable Tx on E1*/
 	USARTE1_CTRLB = 0x08;
 	
 	
@@ -118,17 +124,20 @@ void main(void)
 	PORTE.DIRSET = 0xFF;
 
 /************ PROGRAM LOOP *************/	
+    /* Set up output strings */
 	char* numbers[5] = {"one\n\r", "two\n\r", "three\n\r", "four\n\r", "five\n\r"};
 	int numberCount = 0;
+
+    /* Wait for the appropriate timeout, then write the specified line to the
+     * serial port*/
 	while(1)
 	{
 		if(timeout == TRUE)
 		{
 			timeout = FALSE;
 			UsartWriteLine(numbers[numberCount]);
+            /* Cycle through the index value of 0-4 repeatedly */
 			numberCount = (++numberCount)%5;
-			
 		}
 	}
-	
 }
