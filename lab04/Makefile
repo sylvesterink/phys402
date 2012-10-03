@@ -4,14 +4,14 @@ OBJCPY = $(AVRPATH)/avr-objcopy
 LOADER = avrdude
 CFLAGS = -Wall -mmcu=atxmega128a1 -Os#-g
 LINKFLAGS = -mmcu=atxmega128a1
-LIBRARIES = -lAVRX_Clocks#-L~/avr/avrfiles#-lpthread -lrt -L$(WSU_LIB) -lris -ltpsapi -lipc
-INCLOCS =  #-I~/avr/avrfiles#-I/usr/avr/include#-I$(WSU_INC)
+LIBRARIES = #-lAVRX_Clocks
+INCLOCS =
 PROGRAMMER = avrispmkII
 DEVICE = x128a1 
 PORT = usb
-SOURCE  = main.c
+SOURCE  = part1.c
 OBJECTS = $(SOURCE:.c=.o)
-EXECUTABLE = ledblink
+EXECUTABLE = part1
 
 all: $(EXECUTABLE)
 

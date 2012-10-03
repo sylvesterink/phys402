@@ -137,7 +137,9 @@ int main(int argc, char const *argv[])
 			timeout = FALSE;
 			UsartWriteLine(numbers[numberCount]);
             /* Cycle through the index value of 0-4 repeatedly */
-			numberCount = (++numberCount)%5;
+            numberCount++;
+			numberCount %= 5;
+			/*numberCount = (++numberCount)%5;*/
 		}
 	}
 }
