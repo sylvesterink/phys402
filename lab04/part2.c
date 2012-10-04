@@ -1,6 +1,6 @@
 /**
- * project: Lab 4, part 1
- * @file part1.c
+ * project: Lab 4, part 2
+ * @file part2.c
  * @brief 
  * @author Cameron Bentley, Brandon Kasa
  * @date 2012-09-27
@@ -35,7 +35,7 @@ ISR(TCC0_OVF_vect)
 	{
 		TCC0_CCA += TIMER_STEP;
 	}
-	PORTH_OUT = 0x01;
+	PORTH_OUT = 0xFF;
 }
 
 /**
@@ -77,16 +77,14 @@ int main(int argc, char const *argv[])
 	
 	/*Set LED1 to output*/
 	PORTH_DIR = 0xFF;
-	PORTH_OUT = 0x01;
+	PORTH_OUT = 0xFF;
 	
 	sei();
-	
-	//PORTC_DIRSET = 0xFF;
+
 	
 
 /************ PROGRAM LOOP *************/	
 	while(1)
 	{
-		//PORTH_OUT = 0x00;
 	}
 }
