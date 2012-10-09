@@ -36,7 +36,7 @@ volatile short int timeout = FALSE;
 volatile char *snd;
 
 /**
- * @brief !!
+ * @brief When the timer expires, set timeout flag
  * @param TIMER1_OVF_vect
  */
 ISR(TCC0_OVF_vect)
@@ -48,7 +48,8 @@ ISR(TCC0_OVF_vect)
 }
 
 /**
- * @brief !!
+ * @brief Whenever a character is done sending, if there's another character
+ *        to send, send it.
  * @param USARTC1_TXC_vect
  */
 ISR(USARTE1_TXC_vect)
