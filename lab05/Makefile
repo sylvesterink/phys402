@@ -4,14 +4,14 @@ OBJCPY = $(AVRPATH)/avr-objcopy
 LOADER = avrdude
 CFLAGS = -Wall -mmcu=atxmega128a1 -Os#-g
 LINKFLAGS = -mmcu=atxmega128a1
-LIBRARIES = -lAVRX_Clocks#-lAVRX_Clocks
+LIBRARIES = -lAVRX_Clocks -lAVRX_Serial -lm -lc
 INCLOCS =
 PROGRAMMER = avrispmkII
 DEVICE = x128a1 
 PORT = usb
-SOURCE  = part2.c
+SOURCE  = part1.c
 OBJECTS = $(SOURCE:.c=.o)
-EXECUTABLE = part2
+EXECUTABLE = part1
 
 all: $(EXECUTABLE)
 

@@ -28,8 +28,8 @@ static volatile short TIMER_STEP = 1;
  */
 ISR(PORTJ_INT0_vect)
 {
-	/*TIMER_STEP *= -1;*/ /*This works, but mult is slower*/
-	TIMER_STEP -= TIMER_STEP; /*Flip value to its negative*/
+    TIMER_STEP *= -1; /*This works, but mult is slower*/
+	/*TIMER_STEP -= TIMER_STEP; [>Flip value to its negative<]*/
 	TCC0_CCA += TIMER_STEP; /*Add initial value to the CCA value*/
 	PORTH_OUT = 0x00; /*Turn off LED for end of high duration*/
 }
