@@ -10,6 +10,7 @@
 #include <avr/interrupt.h>
 #include <avr/io.h>
 #include <string.h>
+#include <stdlib.h>
 #include <AVRXlib/AVRX_Clocks.h>
 #include <AVRXlib/AVRX_Serial.h>
 
@@ -79,6 +80,15 @@ int main(int argc, char const *argv[])
 
 	PMIC.CTRL = PMIC_HILVLEN_bm | PMIC_MEDLVLEN_bm | PMIC_LOLVLEN_bm;
 
+/************ SET UP ADC *************/
+    ADCA_CTRLA = 0x05; /*Enable, and use ADC Sample channel 1*/
+    ADCA_CTRLB = ADC_RESOLUTION_12BIT_gc; /*Set the ADC conversion resolution*/
+    ADCA_REFCTRL = ADC_REFSEL_AREFA_gc; /*Select the voltage reference (external ref on port A*/
+    ADCA_PRESCALER = ADC_PRESCALER_DIV512_gc; /*Prescale ADC clock input*/
+    ADCA_CH0_CTRL = ADC_CH_INPUTMODE_SINGLEENDED_gc | /*Set chan inputmode and gain*/
+                    ADC_CH_GAIN_1X_gc;
+    ADCA_CH0_MUXCTRL = ADC_CH_MUXPOS_PIN5_gc; /*Set pin to get value from*/
+
 /************ SET UP SERIAL PORT *************/
     USART_init(&stU,
             0xE1,
@@ -102,15 +112,35 @@ int main(int argc, char const *argv[])
 	sei(); /*Enable interrupts*/
 
 /************ PROGRAM LOOP *************/
+    int adcBuf;
     char rxBuf[RX_BUFSIZE];
+    char txBuf[TX_BUFSIZE];
+
+    /*Send initial message, then wait for Tx to complete*/
     USART_send(&stU, "What is your bidding my master?");
+    while (!(stU.serStatus & _USART_TX_EMPTY) ) { ; }
+
 	while(1)
 	{
-        USART_read(&stU, rxBuf);
-        if(strcmp(rxBuf, "test") == 0)
+        /*Wait until input termination arrives*/
+        if (stU.serStatus & _USART_RX_DONE)
         {
-            memset(rxBuf, 0, RX_BUFSIZE);
-            USART_send(&stU, "OMGHI");
+            /*Buffer string locally and clear Rx register*/
+            USART_read(&stU, rxBuf);
+
+            /*If it's a valid command, process it*/
+            if (strlen(rxBuf) > 0)
+            {
+                ADCA.CH0.CTRL |= ADC_CH_START_bm;
+                /*Wait for bit 1 to signal ADC conversion complete*/
+                while (!ADCA_CH0_INTFLAGS) { ; }
+
+                adcBuf = ADCA_CH0_RES;
+                itoa(adcBuf, txBuf, 10);
+
+                USART_send(&stU, txBuf);
+                while (!(stU.serStatus & _USART_TX_EMPTY) ) { ; }
+            }
         }
 	}
 }

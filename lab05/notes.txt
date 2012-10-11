@@ -1,0 +1,9 @@
+Part 1:
+Prescaler: 4    Measurement Uncertainty: Stable-3307 Tilt-3250
+Prescaler: 8    Measurement Uncertainty: Stable-3050 Tilt-2790
+Prescaler: 16   Measurement Uncertainty: Stable-2950 Tilt-2640
+Prescaler: 32   Measurement Uncertainty: Stable-2880 Tilt-2570
+Prescaler: 64   Measurement Uncertainty: Stable-2880 Tilt-2570
+Prescaler: 128  Measurement Uncertainty: Stable-2880 Tilt-2570
+Prescaler: 256  Measurement Uncertainty: Stable-2880 Tilt-2570
+Prescaler: 512  Measurement Uncertainty: Stable-2880 Tilt-2570
