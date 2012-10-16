@@ -1,8 +1,7 @@
 /**
- * project: Lab 5, part 1
+ * project: Lab 6, part 1
  * @file part1.c
- * @brief Unit listens for a command on the serial port, then replies with the
- *        current value of one of the accelerometer axes.
+ * @brief 
  * @author Cameron Bentley, Brandon Kasa
  * @date 2012-10-16
  * build: 1.0
@@ -22,12 +21,37 @@
 #define RX_BUFSIZE 160
 #define TX_BUFSIZE 80
 
+/*Define PWM default values*/
+#define PWM_LENGTH 10000
+#define PWM_MIN 500
+/*#define PWM_STOP 500*/
+#define PWM_MAX 1000
+
 /*Define our own boolean values for readability*/
 #define FALSE 0
 #define TRUE 1
 
 /*Usart instance*/
 volatile XUSARTst stU;
+
+/**
+ * @brief ISR called whenever the high duration of the PWM ends.
+ *        (This means the time matches the CCA value)
+ */
+ISR(TCC0_CCA_vect)
+{
+    PORTC_OUT = 0x00;
+}
+
+
+/**
+ * @brief ISR called whenever the PWM cycle ends.
+ *        (ie, when the counter overflows and restarts)
+ */
+ISR(TCC0_OVF_vect)
+{
+    PORTC_OUT = 0xFF;
+}
 
 /**
  * @brief ISR called whenever a byte has been recieved via USART
@@ -66,15 +90,16 @@ int main(int argc, char const *argv[])
 
 	PMIC.CTRL = PMIC_HILVLEN_bm | PMIC_MEDLVLEN_bm | PMIC_LOLVLEN_bm;
 
-/************ SET UP ADC *************/
-    ADCA_CTRLA = 0x05; /*Enable, and use ADC Sample channel 1*/
-    ADCA_CTRLB = ADC_RESOLUTION_12BIT_gc; /*Set the ADC conversion resolution*/
-    ADCA_REFCTRL = ADC_REFSEL_AREFA_gc; /*Select the voltage reference
-                                          (external ref on port A)*/
-    ADCA_PRESCALER = ADC_PRESCALER_DIV512_gc; /*Prescale ADC clock input*/
-    ADCA_CH0_CTRL = ADC_CH_INPUTMODE_SINGLEENDED_gc |
-                    ADC_CH_GAIN_1X_gc; /*Set chan inputmode and gain*/
-    ADCA_CH0_MUXCTRL = ADC_CH_MUXPOS_PIN5_gc; /*Set pin to get value from*/
+/************ SET UP TIMERS *************/
+	TCC0_CTRLA = TC_CLKSEL_DIV64_gc; /*Set clock divider*/
+	TCC0_CTRLB = TC_WGMODE_SS_gc | TC0_CCAEN_bm;/*Set waveform generation to single slope*/
+	TCC0_CTRLC = 0x00; /*Turn waveform generation output compare off*/
+	TCC0_CTRLD = 0x00;  /*Turn off event action*/
+	TCC0_CTRLE = 0x00; /*Sets timer to 16bit mode*/
+	TCC0_INTCTRLA = 0x02; /*Sets the interrupt to overflow to med priority*/
+	TCC0_INTCTRLB = 0x02; /*Sets the Compare or Capture interrupt to med priority*/
+	TCC0_PER = PWM_LENGTH; /* Cycle length */
+	TCC0_CCA = PWM_MIN; /* Capture and Compare point during cycle */
 
 /************ SET UP SERIAL PORT *************/
     /*Initialize serial port to desired values*/
@@ -100,15 +125,18 @@ int main(int argc, char const *argv[])
     /*Enable specified serial port*/
     USART_enable(&stU, (USART_TXEN_bm | USART_RXEN_bm));
 
+/************ SET UP OUTPUT PORT *************/
+	PORTC_DIR = 0xFF; /*Sets all the pins on PortC to be output pins*/
+
 	sei(); /*Enable interrupts*/
 
 /************ PROGRAM LOOP *************/
-    int adcBuf;
+    int newCCA;
     char rxBuf[RX_BUFSIZE];
-    char txBuf[TX_BUFSIZE];
+    /*char txBuf[TX_BUFSIZE];*/
 
     /*Send initial message, then wait for Tx to complete*/
-    USART_send(&stU, "What is your bidding my master?");
+    USART_send(&stU, "Enter PWM Value Between 500-1000");
     while (!(stU.serStatus & _USART_TX_EMPTY) ) { ; }
 
 	while(1)
@@ -122,19 +150,14 @@ int main(int argc, char const *argv[])
             /*If it's a valid command, process it*/
             if (strlen(rxBuf) > 0)
             {
-                /*Start ADC conversion*/
-                ADCA.CH0.CTRL |= ADC_CH_START_bm;
-                /*Wait for bit 1 to signal ADC conversion complete*/
-                while (!ADCA_CH0_INTFLAGS) { ; }
-
-                /*Buffer ADCA value and convert to a string for display*/
-                adcBuf = ADCA_CH0_RES;
-                itoa(adcBuf, txBuf, 10);
-
-                /*Display the value*/
-                USART_send(&stU, txBuf);
-                while (!(stU.serStatus & _USART_TX_EMPTY) ) { ; }
+                newCCA = atoi(rxBuf);
+                if ( (newCCA >= PWM_MIN) && (newCCA <= PWM_MAX) )
+                {
+                    TCC0_CCA = newCCA;
+                    USART_send(&stU, "Set new PWM");
+                    while (!(stU.serStatus & _USART_TX_EMPTY) ) { ; }
+                }
             }
         }
 	}
-}
+}Enter PWM Value
