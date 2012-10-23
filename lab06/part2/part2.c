@@ -1,9 +1,11 @@
 /**
  * project: Lab 6, part 2
  * @file part2.c
- * @brief 
+ * @brief Receives a positive or negative percentage value over the serial line
+ *        and sets the speed of a connected DC motor based on this value.
+ *        Positive spins it forward, negative is reverse.
  * @author Cameron Bentley, Brandon Kasa
- * @date 2012-10-16
+ * @date 2012-10-23
  * build: 1.0
  */
 
@@ -25,8 +27,9 @@
 /*Define PWM default values*/
 #define PWM_LENGTH 10000
 #define PWM_CCA 4000
+
+/* Define min and max speed percentage of DC motor */
 #define THROTTLE_MIN 5
-/*#define PWM_STOP 500*/
 #define THROTTLE_MAX 70
 
 /*Define our own boolean values for readability*/
@@ -56,8 +59,8 @@ ISR(USARTE1_TXC_vect)
 }
 
 /**
- * @brief Set up serial port and ADC, then send the accelerometer value
- *        whenever a command is received on the serial line.
+ * @brief Set up serial port and PWM, then set the PWM based on the throttle
+ *        value sent over the serial line
  * @param argc Argument count
  * @param argv[] Argument list
  * @return Error code
@@ -79,8 +82,8 @@ int main(int argc, char const *argv[])
 	TCC0_CTRLC = 0x00; /*Turn waveform generation output compare off*/
 	TCC0_CTRLD = 0x00;  /*Turn off event action*/
 	TCC0_CTRLE = 0x00; /*Sets timer to 16bit mode*/
-	TCC0_INTCTRLA = 0x00; /*Sets the interrupt to overflow to med priority*/
-	TCC0_INTCTRLB = 0x00; /*Sets the Compare or Capture interrupt to med priority*/
+	TCC0_INTCTRLA = 0x00; /*Disable overflow interrupt*/
+	TCC0_INTCTRLB = 0x00; /*Disable cca interrupt*/
 	TCC0_PER = PWM_LENGTH; /* Cycle length */
 	TCC0_CCA = PWM_CCA; /* Capture and Compare point during cycle */
 
@@ -110,15 +113,17 @@ int main(int argc, char const *argv[])
 
 /************ SET UP OUTPUT PORT *************/
 	PORTC_DIR = 0xFF; /*Sets all the pins on PortC to output*/
-    PORTC_OUT = 0x00; /*Pin 1 is pwm, pin 5 is direction*/
-    
+
+    /* Pin 1 is pwm, pin 5 enables reverse direction,
+     * pin 6 enables forward direction */
+    PORTC_OUT = 0x00;
+
 	sei(); /*Enable interrupts*/
 
 /************ PROGRAM LOOP *************/
     int throttle;
-    char msg[50];
+    char msg[50]; /* buffer for confirmation message */
     char rxBuf[RX_BUFSIZE];
-    /*char txBuf[TX_BUFSIZE];*/
 
     /*Send initial message, then wait for Tx to complete*/
     USART_send(&stU, "Enter Throttle Value (5%-70%)");
@@ -135,22 +140,41 @@ int main(int argc, char const *argv[])
             /*If it's a valid command, process it*/
             if (strlen(rxBuf) > 0)
             {
+                /* Convert command to int and prepare confirmation message */
                 throttle = atoi(rxBuf);
                 sprintf(msg, "Set new throttle %d%%", throttle);
+
+                /* If the throttle is positive, set the forward pin,
+                 * otherwise set the reverse pin. */
                 if (throttle < 0)
                 {
+                    /* When throttle is negative,
+                     * invert the it so correct PWM is set */
                     throttle *= -1;
+                    
+                    /* Clear both direction pins, ignoring the lower pins,
+                     * which are automatically set to the PWM by the TCC */
+                    PORTC_OUT &= 0xCF;
+                    /* Set the reverse direction pin */
                     PORTC_OUT |= 0x10;
                 }
                 else
                 {
-                    PORTC_OUT &= 0xEF;
+                    /* Clear both direction pins, ignoring the lower pins,
+                     * which are automatically set to the PWM by the TCC */
+                    PORTC_OUT &= 0xCF;
+                    /* Set the forward direction pin */
+                    PORTC_OUT |= 0x20;
                 }
 
+                /* Ensure that the throttle value is within allowed range */
                 if ( (throttle >= THROTTLE_MIN) && (throttle <= THROTTLE_MAX) )
                 {
+                    /* Set the PWM CCA to the value based off
+                     * the throttle percentage */
                     TCC0_CCA = throttle * 100;
 
+                    /* Send the confirmation message */
                     USART_send(&stU, msg);
                     while (!(stU.serStatus & _USART_TX_EMPTY) ) { ; }
                 }

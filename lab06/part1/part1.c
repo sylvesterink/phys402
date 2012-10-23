@@ -1,9 +1,10 @@
 /**
  * project: Lab 6, part 1
  * @file part1.c
- * @brief 
+ * @brief Sets the PWM to values specified through the serial connection and
+ *        uses this PWM to drive a servo.
  * @author Cameron Bentley, Brandon Kasa
- * @date 2012-10-16
+ * @date 2012-10-23
  * build: 1.0
  */
 
@@ -37,6 +38,7 @@ volatile XUSARTst stU;
 /**
  * @brief ISR called whenever the high duration of the PWM ends.
  *        (This means the time matches the CCA value)
+ *        Sets wave value low.
  */
 ISR(TCC0_CCA_vect)
 {
@@ -47,6 +49,7 @@ ISR(TCC0_CCA_vect)
 /**
  * @brief ISR called whenever the PWM cycle ends.
  *        (ie, when the counter overflows and restarts)
+ *        Sets wave value high.
  */
 ISR(TCC0_OVF_vect)
 {
@@ -73,8 +76,8 @@ ISR(USARTE1_TXC_vect)
 }
 
 /**
- * @brief Set up serial port and ADC, then send the accelerometer value
- *        whenever a command is received on the serial line.
+ * @brief Set up serial port and PWM, then set the PWM value
+ *        to the value sent over the serial port.
  * @param argc Argument count
  * @param argv[] Argument list
  * @return Error code
@@ -104,7 +107,7 @@ int main(int argc, char const *argv[])
 /************ SET UP SERIAL PORT *************/
     /*Initialize serial port to desired values*/
     USART_init(&stU,
-            0xE1,
+            0xE1,  /* Will use port E1 */
             pClk,
             (_USART_TXCIL_MED | _USART_RXCIL_MED),
             FBAUD,
@@ -133,7 +136,6 @@ int main(int argc, char const *argv[])
 /************ PROGRAM LOOP *************/
     int newCCA;
     char rxBuf[RX_BUFSIZE];
-    /*char txBuf[TX_BUFSIZE];*/
 
     /*Send initial message, then wait for Tx to complete*/
     USART_send(&stU, "Enter PWM Value Between 500-1000");
@@ -150,6 +152,8 @@ int main(int argc, char const *argv[])
             /*If it's a valid command, process it*/
             if (strlen(rxBuf) > 0)
             {
+                /* Convert received value to an int.  If it's within valid
+                 * range, set the PWM CCA, then send confirmation message */
                 newCCA = atoi(rxBuf);
                 if ( (newCCA >= PWM_MIN) && (newCCA <= PWM_MAX) )
                 {
@@ -160,4 +164,4 @@ int main(int argc, char const *argv[])
             }
         }
 	}
-}Enter PWM Value
+}
