@@ -1,8 +1,8 @@
 /**
  * project: Lab 7, part 1
- * @file par1.c
- * @brief Whenever a button is pushed, the LEDs toggle between bright and dim,
- *        slowly fading between states.
+ * @file part1.c
+ * @brief Times how long button was held, then changes led brightness based
+ *        on how long button was held.  Longer is brighter, shorter is dimmer.
  * @author Cameron Bentley, Brandon Kasa
  * @date 2012-10-09
  * build: 1.0
@@ -10,17 +10,35 @@
 
 #include <avr/interrupt.h>
 #include <avr/io.h>
-#include <AVRXlib/AVRX_Clocks.h> /*Clocks used for timing*/
+#include <string.h>
+#include <stdlib.h>
+#include <AVRXlib/AVRX_Clocks.h>
+#include <AVRXlib/AVRX_Serial.h>
+
+/*Defines for setting up serial link*/
+#define BSCALE_FACTOR -4
+#define FBAUD 576
+
+#define RX_BUFSIZE 160
+#define TX_BUFSIZE 80
 
 /*Define constants*/
+#define OFF_TIME 6000
 #define CYCLE_LENGTH 5000
 #define CCA_LENGTH 4800
+
+/*Define our own boolean values for readability*/
+#define FALSE 0
+#define TRUE 1
 
 /*Define globals*/
 /*This is the step size that determines how fast the CA length changes*/
 static volatile short TIMER_STEP = 1;
 volatile short timerStarted = FALSE;
 volatile uint16_t timerCount = 0;
+
+/*Usart instance*/
+volatile XUSARTst stU;
 
 /**
  * @brief ISR called whenever pin state changes.
@@ -30,12 +48,14 @@ volatile uint16_t timerCount = 0;
  */
 ISR(PORTJ_INT0_vect)
 {
-	!!!need to figure out how to make this time the length of one button press instead of the difference between to presses
 	if (!timerStarted)
 	{
         /*Only respond after 70ms to avoid button bounce*/
 		if (RTC_CNT > 70)
 		{
+            USART_send(&stU, "Started timer");
+            while (!(stU.serStatus & _USART_TX_EMPTY) ) { ; }
+
 			timerStarted = TRUE;
 			RTC_CNT = 0; /*Set the timer counter to 0*/
 		}
@@ -48,11 +68,18 @@ ISR(PORTJ_INT0_vect)
 			timerStarted = FALSE;
 			timerCount = RTC_CNT; /*Get the timer count and store it for printing*/
 			RTC_CNT = 0; /*Timer counter set to 0 for avoiding button bounce*/
-			if (timerCount>CYCLE_LENGTH)
+            if (timerCount > OFF_TIME)
+            {
+                timerCount = 0;
+            }
+            else if (timerCount > CYCLE_LENGTH)
 			{
 				timerCount = CYCLE_LENGTH;
 			}
 			TCF0_CCA = timerCount; /*sets the compare value to the button press length*/
+
+            USART_send(&stU, "Stopped Timer");
+            while (!(stU.serStatus & _USART_TX_EMPTY) ) { ; }
 		}
 	}
     //TIMER_STEP *= -1; /*This works, but mult is slower*/
@@ -69,7 +96,7 @@ ISR(PORTJ_INT0_vect)
  */
 ISR(TCF0_CCA_vect)
 {
-	PORTH_OUT = 0xFF; /*Turn on LED*/
+	PORTH_OUT = 0x00; /*Turn off LED*/
 }
 
 
@@ -81,14 +108,26 @@ ISR(TCF0_CCA_vect)
  */
 ISR(TCF0_OVF_vect)
 {
-    /*If the value is between its high and low bounds, increase/decrease it
-     * based on the timer step*/
-	//if ( (TCF0_CCA > 0) && (TCF0_CCA < CCA_LENGTH) )
-	//{
-		//TCF0_CCA += TIMER_STEP;
-	//}
-	PORTH_OUT = 0x00; /*Turn off LED*/
-	
+	PORTH_OUT = 0xFF; /*Turn on LED*/
+}
+
+/**
+ * @brief ISR called whenever a byte has been recieved via USART
+ *        Calls the receive handler function of the serial library.
+ */
+ISR(USARTE1_RXC_vect)
+{
+    Rx_Handler(&stU);
+}
+
+/**
+ * @brief ISR called whenever a byte has been sent via USART and it's ready
+ *        for the next byte
+ *        Calls the transmit handler function of the serial library.
+ */
+ISR(USARTE1_TXC_vect)
+{
+    Tx_Handler(&stU);
 }
 
 /**
@@ -119,13 +158,44 @@ int main(int argc, char const *argv[])
 	TCF0_PER = CYCLE_LENGTH; /* Cycle length */
 	TCF0_CCA = CCA_LENGTH; /* Capture and Compare point during cycle */
 
+/************ SET UP RTC Clock *************/
+	/*Set source to the internal 1.024khz oscillator*/
+	CLK_RTCCTRL = CLK_RTCSRC_RCOSC_gc | CLK_RTCEN_bm;
+	RTC_CTRL = RTC_PRESCALER_DIV1_gc; /*Set to actual value for ms timing*/
+	RTC_PER = 0xFFFF; /*Set it to count full count value*/
+	RTC_CNT = 0; /*Init counter to 0*/
+
 /***************SET UP BUTTONS*******************/
 
 	PORTJ_DIR = 0x00; /*Set this as an input pin*/
 	PORTJ_INTCTRL = 0x01; /*sets interrupt 0 to med priority*/
 	PORTJ_INT0MASK = 0xFF; /*sets all button pins to trigger interrupt*/
-	PORTCFG_MPCMASK = 0xff; /*Set mask so that all pins are to be configured*/
-	PORTJ_PIN0CTRL = 0x01; /*Set pin trigger on high edge, when button is pressed*/
+	PORTCFG_MPCMASK = 0xFF; /*Set mask so that all pins are to be configured*/
+	PORTJ_PIN0CTRL = 0x00; /*Set pin trigger on both high/low edge*/
+
+/************ SET UP SERIAL PORT *************/
+    /*Initialize serial port to desired values*/
+    USART_init(&stU,
+            0xE1,  /* Will use port E1 */
+            pClk,
+            (_USART_TXCIL_MED | _USART_RXCIL_MED),
+            FBAUD,
+            BSCALE_FACTOR,
+            _USART_CHSZ_8BIT,
+            _USART_PM_DISABLED,
+            _USART_SM_1BIT);
+
+    /*Initialize a buffer for incoming and outgoing serial transmissions*/
+    USART_buffer_init(&stU,
+                    RX_BUFSIZE,
+                    TX_BUFSIZE);
+
+    /*Set the input and output modes for the specified serial port.*/
+    stU.fInMode = _INPUT_CR | _INPUT_ECHO;
+	stU.fOutMode = _OUTPUT_CRLF;
+
+    /*Enable specified serial port*/
+    USART_enable(&stU, (USART_TXEN_bm | USART_RXEN_bm));
 
 
 /***************SET UP LEDS*******************/
@@ -137,6 +207,10 @@ int main(int argc, char const *argv[])
 
 
 /************ PROGRAM LOOP *************/
+    /*Send initial message, then wait for Tx to complete*/
+    USART_send(&stU, "Initialized");
+    while (!(stU.serStatus & _USART_TX_EMPTY) ) { ; }
+    
 	while(1)
 	{
 	}
