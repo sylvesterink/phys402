@@ -23,6 +23,7 @@
 #define TX_BUFSIZE 80
 
 /*Define constants*/
+/*Off time is how long to hold the button to turn off LED*/
 #define OFF_TIME 6000
 #define CYCLE_LENGTH 5000
 #define CCA_LENGTH 4800
@@ -32,8 +33,6 @@
 #define TRUE 1
 
 /*Define globals*/
-/*This is the step size that determines how fast the CA length changes*/
-static volatile short TIMER_STEP = 1;
 volatile short timerStarted = FALSE;
 volatile uint16_t timerCount = 0;
 
@@ -43,8 +42,8 @@ volatile XUSARTst stU;
 /**
  * @brief ISR called whenever pin state changes.
  *        (ie, whenever a button is pushed)
- *        The timer step is flipped, changing whether the high duration of the
- *        PWM increases or decreases each cycle.
+ *        Pushed once, starts the timer.  Pushed a second time, sets the
+ *        CCA value to the timer value.  (Set to 0 if exceeds OFF_TIME)
  */
 ISR(PORTJ_INT0_vect)
 {
@@ -66,8 +65,10 @@ ISR(PORTJ_INT0_vect)
 		if (RTC_CNT > 70)
 		{
 			timerStarted = FALSE;
-			timerCount = RTC_CNT; /*Get the timer count and store it for printing*/
+			timerCount = RTC_CNT; /*Get the timer count and buffer it*/
 			RTC_CNT = 0; /*Timer counter set to 0 for avoiding button bounce*/
+            /*Turn off timer if button held too long, or cap it to max cca
+             * value*/
             if (timerCount > OFF_TIME)
             {
                 timerCount = 0;
@@ -76,17 +77,13 @@ ISR(PORTJ_INT0_vect)
 			{
 				timerCount = CYCLE_LENGTH;
 			}
+
 			TCF0_CCA = timerCount; /*sets the compare value to the button press length*/
 
             USART_send(&stU, "Stopped Timer");
             while (!(stU.serStatus & _USART_TX_EMPTY) ) { ; }
 		}
 	}
-    //TIMER_STEP *= -1; /*This works, but mult is slower*/
-	///*TIMER_STEP -= TIMER_STEP; [>Flip value to its negative<]*/
-	//TCF0_CCA += TIMER_STEP; /*Add initial value to the CCA value*/
-	//PORTH_OUT = 0x00; /*Turn off LED for end of high duration*/
-	
 }
 
 /**
@@ -103,8 +100,7 @@ ISR(TCF0_CCA_vect)
 /**
  * @brief ISR called whenever the PWM cycle ends.
  *        (ie, when the counter overflows and restarts)
- *        This increases/decreases the duration of the CCA (for dimming)
- *        and turns on the LED for the new high duration of the cycle.
+ *        Turns on led for the beginning of the next cycle
  */
 ISR(TCF0_OVF_vect)
 {
@@ -146,8 +142,8 @@ int main(int argc, char const *argv[])
 	GetSystemClocks(&sClk, &pClk);
 
 	PMIC.CTRL = PMIC_HILVLEN_bm | PMIC_MEDLVLEN_bm | PMIC_LOLVLEN_bm;
-/************ SET UP TIMERS *************/
 
+/************ SET UP TIMERS *************/
 	TCF0_CTRLA = TC_CLKSEL_DIV8_gc; /*Set clock divider*/
 	TCF0_CTRLB = TC_WGMODE_SS_gc | TC0_CCAEN_bm;/*Set waveform generation to single slope*/
 	TCF0_CTRLC = 0x00; /*Turn waveform generation output compare off*/
@@ -166,7 +162,6 @@ int main(int argc, char const *argv[])
 	RTC_CNT = 0; /*Init counter to 0*/
 
 /***************SET UP BUTTONS*******************/
-
 	PORTJ_DIR = 0x00; /*Set this as an input pin*/
 	PORTJ_INTCTRL = 0x01; /*sets interrupt 0 to med priority*/
 	PORTJ_INT0MASK = 0xFF; /*sets all button pins to trigger interrupt*/
