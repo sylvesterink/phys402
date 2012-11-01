@@ -1,0 +1,26 @@
+Materials needed:
+camera with image processor
+Datasheet Xbee
+Datasheet Camera (CMU Cam4)
+Datasheet color sensor
+Datasheet ir sensor
+
+Tasks:
+Make wheels move
+Make color sensors move
+Receive color sensor input
+Receive ir input
+Make wifi send/receive
+Get camera working
+Start on robot logic
+
+Logic Tasks:
+State Machine
+Initialize components
+wireless communications for commands
+wireless for photo transmission
+color sensor logic:
+    searching
+    calculating location/orientation goal
+driver logic along with orientation
+distance/stopping logic
