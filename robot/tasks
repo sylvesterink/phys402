@@ -1,11 +1,12 @@
 Materials needed:
 camera with image processor
-Datasheet Xbee
-Datasheet Camera (CMU Cam4)
+Datasheet wifi
+-Datasheet Camera (CMU Cam4)
 Datasheet color sensor
 Datasheet ir sensor
 
 Tasks:
+Get serial port working
 Make wheels move
 Make color sensors move
 Receive color sensor input
