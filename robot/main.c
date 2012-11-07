@@ -11,6 +11,7 @@
 #include <avr/io.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <AVRXlib/AVRX_Clocks.h>
 #include <AVRXlib/AVRX_Serial.h>
 
@@ -127,7 +128,9 @@ int main(int argc, char const *argv[])
 
 	sei(); /*enable interrupts*/
 
-
+	PORTC_DIR |= 0X03;
+	PORTC_OUT &= 0XFE; //turn off PC0 to enable transceiver
+	PORTC_OUT |= 0X02; //turn on PC1 to take transceiver out of shutdown mode
 
 /************ PROGRAM LOOP *************/
     /*Send initial message, then wait for Tx to complete*/
