@@ -23,9 +23,17 @@
 #define TX_BUFSIZE 80
 
 /*Define constants*/
-/*Off time is how long to hold the button to turn off LED*/
+/*Default pwm length*/
 #define PWM_LENGTH 10000
-#define PWM_CCA 9500
+
+/*Default wheel speed*/
+#define PWM_WHEEL_DEFAULT 9500
+
+/*Set max/min values for eye servos*/
+#define PWM_SERVO_MIN 500
+#define PWM_SERVO_DEFAULT 750
+/*#define PWM_STOP 500*/
+#define PWM_SERVO_MAX 1000
 
 /*Min/max percentages for dc motors*/
 #define THROTTLE_MIN 20 /*5*/
@@ -49,7 +57,8 @@ volatile XUSARTst stU;
 /*Function definitions*/
 void serPrint(char* buf);
 uint8_t serRead(char* buf);
-void move(uint8_t wheels, uint8_t lThrottle, uint8_t rThrottle);
+void move(uint8_t wheelSel, uint8_t lThrottle, uint8_t rThrottle);
+void actuateEyes(int lEyePos, int rEyePos);
 
 /**
  * @brief ISR called whenever a byte has been recieved via USART
@@ -88,6 +97,7 @@ int main(int argc, char const *argv[])
 	PMIC.CTRL = PMIC_HILVLEN_bm | PMIC_MEDLVLEN_bm | PMIC_LOLVLEN_bm;
 
 /************ SET UP TIMERS *************/
+    /* set up wheel motors */
     TCE1_CTRLA = TC_CLKSEL_DIV64_gc; /*Set clock divider*/
     TCE1_CTRLB = TC_WGMODE_SS_gc | TC0_CCAEN_bm | TC0_CCBEN_bm;/*Set waveform generation to single slope, enable first two pins for pwm*/
     TCE1_CTRLC = 0x00; /*Turn waveform generation output compare off*/
@@ -96,8 +106,20 @@ int main(int argc, char const *argv[])
     TCE1_INTCTRLA = 0x00; /*Sets the interrupt to overflow to med priority*/
     TCE1_INTCTRLB = 0x00; /*Sets the Compare or Capture interrupt to med priority*/
     TCE1_PER = PWM_LENGTH; /* Cycle length */
-    TCE1_CCA = PWM_CCA; /* Capture and Compare point during cycle */
-    TCE1_CCB = PWM_CCA; /* Capture and Compare point during cycle */
+    TCE1_CCA = PWM_WHEEL_DEFAULT; /* Capture and Compare point during cycle */
+    TCE1_CCB = PWM_WHEEL_DEFAULT; /* Capture and Compare point during cycle */
+
+    /* set up eye servos */
+    TCE0_CTRLA = TC_CLKSEL_DIV64_gc; /*Set clock divider*/
+    TCE0_CTRLB = TC_WGMODE_SS_gc | TC0_CCAEN_bm | TC0_CCBEN_bm;/*Set waveform generation to single slope, enable first two pins for pwm*/
+    TCE0_CTRLC = 0x00; /*Turn waveform generation output compare off*/
+    TCE0_CTRLD = 0x00;  /*Turn off event action*/
+    TCE0_CTRLE = 0x00; /*Sets timer to 16bit mode*/
+    TCE0_INTCTRLA = 0x00; /*Sets the interrupt to overflow to med priority*/
+    TCE0_INTCTRLB = 0x00; /*Sets the Compare or Capture interrupt to med priority*/
+    TCE0_PER = PWM_LENGTH; /* Cycle length */
+    TCE0_CCA = PWM_SERVO_DEFAULT; /* Capture and Compare point during cycle */
+    TCE0_CCB = PWM_SERVO_DEFAULT; /* Capture and Compare point during cycle */
 
 /************ SET UP RTC Clock *************/
 	/*Set source to the internal 1.024khz oscillator*/
@@ -139,36 +161,63 @@ int main(int argc, char const *argv[])
 
 
 /***************SET UP LEDS*******************/
+    /*TODO remove*/
     //PORTH_DIR = 0xFF; /*Set LEDs to output*/
     //PORTH_OUT = 0xFF; /*Turn LEDs on*/
 
 	sei(); /*enable interrupts*/
 
+    /* Enable output to DC motors*/
 	PORTK_DIR = 0xFF; /*Sets all the pins on PortK to output*/
-	PORTE_DIR = 0xF0; /*Sets all the pins on PortK to output*/
-
-    /* !!! Pin 1 is pwm, pin 5 enables reverse direction,
-     * pin 6 enables forward direction */
     PORTK_OUT = 0x00;
-    /*PORTE_OUT = 0x00;*/
 
+    /* Enable output to servos (lo) and H-bridge (hi)*/
+	PORTE_DIR = 0xFF; /*Sets all the pins on PortE to output*/
+    PORTE_OUT = 0x00;
+
+    /* Enable input from color sensors*/
+    //PORTD_DIR = 0x00; /* Set all pins on PortD to input*/
+    //PORTD_DIR = 0x00; /* Set all pins on PortD to input*/
+
+    /*set up remaining serial settings*/
 	PORTC_DIR |= 0X03;
-	PORTC_OUT &= 0XFE; //turn off PC0 to enable transceiver
-	PORTC_OUT |= 0X02; //turn on PC1 to take transceiver out of shutdown mode
+	PORTC_OUT &= 0XFE; /*turn off PC0 to enable transceiver*/
+	PORTC_OUT |= 0X02; /*turn on PC1 to take transceiver out of shutdown mode*/
 
 /************ PROGRAM LOOP *************/
     /*Send initial message, then wait for Tx to complete*/
     serPrint("Initialized");
     
     /*char msg[50]; [> buffer for confirmation message <]*/
-    uint8_t throttle;
     char rxBuf[RX_BUFSIZE];
+
+    /*DC Wheel values*/
+    uint8_t throttle;
     uint8_t wheels = 0;
+
+    /*Servo values*/
+    int servoValue = 0;
+
+    /*sensor values*/
+    int test = 0;
 
 	while(1)
 	{
         if (serRead(rxBuf) == TRUE)
         {
+            /* INCORRECT test color sensors
+            test = PORTD_IN;
+            char msg[50];
+            itoa(test, msg, 10);
+            serPrint(msg);
+            */
+
+            /*  *** ACTUATE EYES ***
+            servoValue = atoi(rxBuf);
+            actuateEyes(servoValue, servoValue);
+            */
+
+            /*  *** MOVE WHEELS ***
             switch (rxBuf[0])
             {
                 case 'L':
@@ -192,12 +241,16 @@ int main(int argc, char const *argv[])
                 case 's':
                     wheels = 0x00;
                     break;
+                default:
+                    wheels = 0x00;
+                    break;
             }
+            */
 
             /* convert throttle value */
-            throttle = atoi(&rxBuf[1]);
+            /*throttle = atoi(&rxBuf[1]);*/
 
-            move(wheels, throttle, throttle);
+            /*move(wheels, throttle, throttle);*/
         }
 	}
 }
@@ -226,12 +279,11 @@ uint8_t serRead(char* buf)
     return FALSE;
 }
 
-void move(uint8_t wheels, uint8_t lThrottle, uint8_t rThrottle)
+void move(uint8_t wheelSel, uint8_t lThrottle, uint8_t rThrottle)
 {
-    serPrint("moving");
-    /*TODO: Need to validate wheels value?
+    /*TODO: Need to validate wheelSel value?
      *      Are checks needed?*/
-    PORTK_OUT = wheels;
+    PORTK_OUT = wheelSel;
 
     /* Ensure that the throttle value is within allowed range */
     /*then set pwm based on throttle percentages*/
@@ -244,4 +296,13 @@ void move(uint8_t wheels, uint8_t lThrottle, uint8_t rThrottle)
     {
         TCE1_CCB = rThrottle * 100;
     }
+}
+
+void actuateEyes(int lEyePos, int rEyePos)
+{
+    if (lEyePos >= PWM_SERVO_MIN && lEyePos <= PWM_SERVO_MAX)
+        TCE0_CCA = lEyePos;
+
+    if (rEyePos >= PWM_SERVO_MIN && rEyePos <= PWM_SERVO_MAX)
+        TCE0_CCB = rEyePos;
 }
