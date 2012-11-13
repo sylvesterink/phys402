@@ -111,7 +111,7 @@ ISR(TCF0_OVF_vect)
  * @brief ISR called whenever a byte has been recieved via USART
  *        Calls the receive handler function of the serial library.
  */
-ISR(USARTE1_RXC_vect)
+ISR(USARTC0_RXC_vect)
 {
     Rx_Handler(&stU);
 }
@@ -121,7 +121,7 @@ ISR(USARTE1_RXC_vect)
  *        for the next byte
  *        Calls the transmit handler function of the serial library.
  */
-ISR(USARTE1_TXC_vect)
+ISR(USARTC0_TXC_vect)
 {
     Tx_Handler(&stU);
 }
@@ -171,7 +171,7 @@ int main(int argc, char const *argv[])
 /************ SET UP SERIAL PORT *************/
     /*Initialize serial port to desired values*/
     USART_init(&stU,
-            0xE1,  /* Will use port E1 */
+            0xC0,  /* Will use port C0 */
             pClk,
             (_USART_TXCIL_MED | _USART_RXCIL_MED),
             FBAUD,
